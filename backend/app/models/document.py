@@ -9,3 +9,4 @@ class DocumentResponse(BaseModel):
     filename: str
     text_length: int
     created_at: datetime
+    chunks: int

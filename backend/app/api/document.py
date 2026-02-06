@@ -2,6 +2,8 @@ import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pathlib import Path
 from datetime import datetime
+from app.utils.chunker import chunk_text
+from app.models.chunk import Chunk
 
 from app.models.document import DocumentResponse
 from app.utils.text_extractor import extract_text_from_pdf
@@ -23,10 +25,26 @@ async def upload_document(file: UploadFile = File(...)):
         f.write(await file.read())
 
     text = extract_text_from_pdf(str(file_path))
+    chunks = chunk_text(text)
+
+    chunk_objects = []
+    for i, chunk in enumerate(chunks):
+        chunk_objects.append(
+            Chunk(
+                id=f"{doc_id}_{i}",
+                document_id=doc_id,
+                text=chunk,
+                index=i
+            )
+        )
+
+    print(f"Created {len(chunk_objects)} chunks for document {doc_id}")
 
     return DocumentResponse(
-        id=doc_id,
-        filename=file.filename,
-        text_length=len(text),
-        created_at=datetime.now()
+    id=doc_id,
+    filename=file.filename,
+    text_length=len(text),
+    chunks=len(chunk_objects),
+    created_at=datetime.now()
     )
+
