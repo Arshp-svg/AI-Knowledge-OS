@@ -2,4 +2,5 @@ fastapi
 uvicorn
 python-dotenv
 pydantic
-pydantic-settings
+python-multipart
+pypdf
