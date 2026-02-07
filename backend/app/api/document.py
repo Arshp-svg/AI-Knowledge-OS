@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from app.utils.chunker import chunk_text
 from app.models.chunk import Chunk
+from app.core.state import embedding_service, vector_store
 
 from app.models.document import DocumentResponse
 from app.utils.text_extractor import extract_text_from_pdf
@@ -38,7 +39,23 @@ async def upload_document(file: UploadFile = File(...)):
             )
         )
 
-    print(f"Created {len(chunk_objects)} chunks for document {doc_id}")
+    chunk_texts = [c.text for c in chunk_objects]
+    embeddings = embedding_service.embed_texts(chunk_texts)
+
+    metadatas = [
+        {
+            "document_id": doc_id,
+            "chunk_index": c.index,
+            "filename": file.filename
+        }
+        for c in chunk_objects
+    ]
+
+    vector_store.add(
+        embeddings=embeddings,
+        texts=chunk_texts,
+        metadatas=metadatas
+    )
 
     return DocumentResponse(
     id=doc_id,
