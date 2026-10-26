@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+.pytest_cache/
+.coverage
+storage/*.db
+storage/qdrant_db/
+.env
+.git/
+.gitignore

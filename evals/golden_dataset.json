@@ -1,0 +1,107 @@
+[
+  {
+    "id": "q01",
+    "question": "What is the mathematical formula for Scaled Dot-Product Attention in the Transformer?",
+    "category": "Architecture & Formulas",
+    "expected_document": "attention.pdf",
+    "reference": "Attention(Q, K, V) = softmax((Q K^T) / sqrt(d_k)) V, where queries and keys have dimension d_k, and values have dimension d_v."
+  },
+  {
+    "id": "q02",
+    "question": "Why is the dot product scaled by 1 / sqrt(d_k) in the attention mechanism?",
+    "category": "Architecture & Formulas",
+    "expected_document": "attention.pdf",
+    "reference": "For large values of d_k, the dot products grow large in magnitude, pushing the softmax function into regions with extremely small gradients. Dividing by sqrt(d_k) counteracts this effect."
+  },
+  {
+    "id": "q03",
+    "question": "How many parallel attention heads does the Transformer model employ, and what is the dimension of each head?",
+    "category": "Architecture & Formulas",
+    "expected_document": "attention.pdf",
+    "reference": "The Transformer uses h = 8 parallel attention layers (heads). With d_model = 512, each head uses d_k = d_v = d_model / h = 64 dimensions."
+  },
+  {
+    "id": "q04",
+    "question": "What is the formula used for sinusoidal Positional Encoding in the Transformer?",
+    "category": "Architecture & Formulas",
+    "expected_document": "attention.pdf",
+    "reference": "PE_(pos, 2i) = sin(pos / 10000^(2i/d_model)) and PE_(pos, 2i+1) = cos(pos / 10000^(2i/d_model)), where pos is position and i is the dimension."
+  },
+  {
+    "id": "q05",
+    "question": "How many layers are in the Transformer encoder and decoder stacks?",
+    "category": "Architecture & Formulas",
+    "expected_document": "attention.pdf",
+    "reference": "Both the encoder and decoder are composed of a stack of N = 6 identical layers."
+  },
+  {
+    "id": "q06",
+    "question": "What optimizer was used to train the Transformer models and what were its hyperparameters?",
+    "category": "Training & Optimization",
+    "expected_document": "attention.pdf",
+    "reference": "The Adam optimizer was used with beta_1 = 0.9, beta_2 = 0.98, and epsilon = 10^-9."
+  },
+  {
+    "id": "q07",
+    "category": "Training & Optimization",
+    "question": "How is the learning rate varied during training according to the formula in the paper?",
+    "expected_document": "attention.pdf",
+    "reference": "lrate = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup_steps^(-1.5)), with warmup_steps = 4000."
+  },
+  {
+    "id": "q08",
+    "category": "Training & Optimization",
+    "question": "What two forms of regularization were employed during Transformer training?",
+    "expected_document": "attention.pdf",
+    "reference": "Residual dropout (with rate P_drop = 0.1) applied to sub-layer outputs and embedding sums, and label smoothing with epsilon_ls = 0.1."
+  },
+  {
+    "id": "q09",
+    "category": "Model Performance & Results",
+    "question": "What BLEU score did the big Transformer model achieve on the WMT 2014 English-to-German translation task?",
+    "expected_document": "attention.pdf",
+    "reference": "The big Transformer model achieved a BLEU score of 28.4 on the WMT 2014 English-to-German translation benchmark."
+  },
+  {
+    "id": "q10",
+    "category": "Model Performance & Results",
+    "question": "What BLEU score did the Transformer achieve on the English-to-French translation task?",
+    "expected_document": "attention.pdf",
+    "reference": "On the WMT 2014 English-to-French translation task, the big model achieved a state-of-the-art BLEU score of 41.8."
+  },
+  {
+    "id": "q11",
+    "category": "Workflow Automation & Operations",
+    "question": "What are the core components of an enterprise AI workflow automation pipeline?",
+    "expected_document": "AI_Workflow_Automation_Roadmap.pdf",
+    "reference": "Enterprise AI workflows include event triggers, ingestion and parsing, reasoning/LLM orchestration, human-in-the-loop validation, and destination execution."
+  },
+  {
+    "id": "q12",
+    "category": "Workflow Automation & Operations",
+    "question": "Why is Human-in-the-Loop (HITL) validation required in automated AI decision workflows?",
+    "expected_document": "AI_Workflow_Automation_Roadmap.pdf",
+    "reference": "Human-in-the-loop validation provides human oversight for low-confidence model decisions, compliance auditing, and mitigation of hallucination risk in high-stakes actions."
+  },
+  {
+    "id": "q13",
+    "category": "Workflow Automation & Operations",
+    "question": "What retry strategy and circuit breaker pattern should be implemented for LLM API failures in production?",
+    "expected_document": "AI_Workflow_Automation_Roadmap.pdf",
+    "reference": "Workflows should implement exponential backoff with jitter for transient 429/503 errors and circuit breakers to failover to backup model endpoints during prolonged outages."
+  },
+  {
+    "id": "q14",
+    "category": "Workflow Automation & Operations",
+    "question": "What latency SLAs are targeted for real-time interactive user workflows versus batch ingestion?",
+    "expected_document": "AI_Workflow_Automation_Roadmap.pdf",
+    "reference": "Interactive workflows target sub-second time-to-first-token (TTFT < 500ms), while asynchronous batch ingestion operates within minutes under background queues."
+  },
+  {
+    "id": "q15",
+    "category": "Guardrails & Boundary Verification",
+    "question": "How does the self-attention mechanism in the decoder prevent attending to subsequent positions?",
+    "expected_document": "attention.pdf",
+    "reference": "The decoder employs masking in the self-attention sub-layer (setting future positions to -infinity) to ensure predictions for position i depend only on known outputs at positions less than i."
+  }
+]

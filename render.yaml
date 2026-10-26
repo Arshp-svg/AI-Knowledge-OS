@@ -1,0 +1,53 @@
+# Render Blueprint: Infrastructure as Code for AI Knowledge OS
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ======================================================
+  # 1. FastAPI Retrieval & Inference Engine (Backend)
+  # ======================================================
+  - type: web
+    name: ai-knowledge-os-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false # Set securely in Render dashboard
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: QDRANT_URL
+        sync: false # Optional: Set to Qdrant Cloud URL or leave empty for embedded disk
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: '["*"]'
+    disk:
+      name: backend-storage
+      mountPath: /app/storage
+      sizeGB: 1
+
+  # ======================================================
+  # 2. Next.js Streaming User Interface (Frontend)
+  # ======================================================
+  - type: web
+    name: ai-knowledge-os-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: ai-knowledge-os-backend
+          type: web
+          property: host

@@ -10,3 +10,4 @@ class DocumentResponse(BaseModel):
     text_length: int
     created_at: datetime
     chunks: int
+    status: str = "INDEXED"

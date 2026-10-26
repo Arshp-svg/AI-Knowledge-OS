@@ -2,8 +2,15 @@ fastapi
 uvicorn
 python-dotenv
 pydantic
+pydantic-settings
 python-multipart
 pypdf
 faiss-cpu
 sentence-transformers
 numpy
+qdrant-client
+groq
+rank-bm25
+flashrank
+slowapi
+langfuse

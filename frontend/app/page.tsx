@@ -7,47 +7,107 @@ type SourceMetadata = {
   document_id: string;
   chunk_index: number;
   filename: string;
+  page_number?: number;
 };
 
 type SourceChunk = {
   text: string;
   metadata: SourceMetadata;
+  score?: number;
 };
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<SourceChunk[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [redactedPii, setRedactedPii] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [currentTraceId, setCurrentTraceId] = useState<string>("");
 
   async function askQuestion() {
     if (!question.trim()) return;
 
+    const currentQuestion = question.trim();
     setLoading(true);
     setError("");
     setAnswer("");
     setSources([]);
+    setRedactedPii([]);
+    setCurrentTraceId("");
 
     try {
-      const res = await fetch("http://localhost:8000/ask", {
+      const res = await fetch(`${API_BASE_URL}/ask/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question: currentQuestion,
+          history: chatHistory.slice(-4),
+        }),
       });
 
-      if (!res.ok) {
-        throw new Error("Backend error");
+      if (!res.ok || !res.body) {
+        throw new Error("Backend streaming error");
       }
 
-      const data = await res.json();
-      setAnswer(data.answer);
-      setSources(data.sources || []);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let fullAnswer = "";
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            try {
+              const payload = JSON.parse(trimmed.slice(6));
+              if (payload.type === "metadata") {
+                setSources(payload.sources || []);
+                if (payload.trace_id) {
+                  setCurrentTraceId(payload.trace_id);
+                }
+                if (payload.pii_redacted && payload.pii_redacted.length > 0) {
+                  setRedactedPii(payload.pii_redacted);
+                }
+              } else if (payload.type === "token") {
+                fullAnswer += payload.token;
+                setAnswer(fullAnswer);
+              }
+            } catch {
+              // Ignore partial chunk decode hitch
+            }
+          }
+        }
+      }
+
+      if (fullAnswer.trim()) {
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "user", content: currentQuestion },
+          { role: "assistant", content: fullAnswer },
+        ]);
+      }
+      setQuestion("");
     } catch (err) {
-      setError("Failed to fetch answer from backend.");
+      setError("Failed to stream answer from backend.");
     } finally {
       setLoading(false);
     }
@@ -60,13 +120,13 @@ export default function Home() {
     }
 
     setUploadLoading(true);
-    setUploadStatus("Uploading...");
+    setUploadStatus("Uploading document...");
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:8000/documents/upload", {
+      const res = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
         body: formData,
       });
@@ -75,12 +135,33 @@ export default function Home() {
         throw new Error("Upload failed");
       }
 
-      setUploadStatus("✅ Document uploaded and indexed successfully.");
-      setFile(null);
-      setTimeout(() => setUploadStatus(""), 3000);
+      const doc = await res.json();
+      setUploadStatus("⚡ Processing & indexing chunks in background...");
+
+      // Poll document status until indexing completes
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${API_BASE_URL}/documents/${doc.id}/status`);
+          if (statusRes.ok) {
+            const data = await statusRes.json();
+            if (data.status === "INDEXED") {
+              clearInterval(pollInterval);
+              setUploadStatus(`✅ Successfully indexed ${data.chunks} chunks.`);
+              setUploadLoading(false);
+              setFile(null);
+              setTimeout(() => setUploadStatus(""), 4000);
+            } else if (data.status === "FAILED") {
+              clearInterval(pollInterval);
+              setUploadStatus("❌ Background ingestion failed.");
+              setUploadLoading(false);
+            }
+          }
+        } catch {
+          // Continue polling on transient connection hitch
+        }
+      }, 1000);
     } catch (err) {
       setUploadStatus("❌ Failed to upload document.");
-    } finally {
       setUploadLoading(false);
     }
   }
@@ -214,11 +295,25 @@ export default function Home() {
           {/* Main Content - Ask Section */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/50 dark:border-gray-700/50 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-2 mb-4">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Ask a Question</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Ask a Question</h2>
+                </div>
+                {chatHistory.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setChatHistory([]);
+                      setAnswer("");
+                      setSources([]);
+                    }}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-md font-medium flex items-center space-x-1 transition-colors"
+                  >
+                    <span>🔄 New Thread ({chatHistory.length / 2} turns)</span>
+                  </button>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -275,18 +370,50 @@ export default function Home() {
               </div>
             )}
 
+            {/* PII Redaction Alert */}
+            {redactedPii.length > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300 flex items-center space-x-2 animate-fadeIn">
+                <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>
+                  <strong>AI Guardrails Active:</strong> Sensitive PII ({redactedPii.join(", ")}) was automatically redacted before LLM processing.
+                </span>
+              </div>
+            )}
+
             {/* Answer Section */}
-            {answer && (
+            {(answer || loading) && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200/50 dark:border-gray-700/50 p-6 animate-fadeIn">
-                <div className="flex items-center space-x-2 mb-4">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Answer</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Answer</h3>
+                    {currentTraceId && (
+                      <span
+                        className="text-[11px] font-mono bg-slate-100 dark:bg-gray-700/80 text-slate-500 dark:text-gray-400 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-gray-600 flex items-center space-x-1.5"
+                        title={`OpenTelemetry / Langfuse Trace: ${currentTraceId}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>trace:{currentTraceId.slice(0, 8)}</span>
+                      </span>
+                    )}
+                  </div>
+                  {loading && (
+                    <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium px-2.5 py-0.5 rounded-full flex items-center space-x-1.5">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping"></span>
+                      <span>Streaming tokens...</span>
+                    </span>
+                  )}
                 </div>
                 <div className="prose prose-slate dark:prose-invert max-w-none">
                   <p className="text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
                     {answer}
+                    {loading && (
+                      <span className="inline-block w-1.5 h-4 ml-1 bg-indigo-500 rounded-sm animate-pulse align-middle"></span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -311,12 +438,26 @@ export default function Home() {
                       className="border border-slate-200 dark:border-gray-600 rounded-xl p-4 bg-slate-50 dark:bg-gray-700/50 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors group"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                          Source {i + 1}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-md">
-                          {s.metadata.filename || "Unknown"}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                            Source {i + 1}
+                          </span>
+                          {s.score !== undefined && (
+                            <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium px-2 py-0.5 rounded-full">
+                              {Math.round(s.score * 100)}% match
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 px-2 py-1 rounded-md font-medium">
+                            {s.metadata.filename || "Unknown"}
+                          </span>
+                          {s.metadata.page_number && (
+                            <span className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 px-2 py-1 rounded-md font-semibold">
+                              Page {s.metadata.page_number}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 group-hover:line-clamp-none transition-all">
                         {s.text.slice(0, 300)}…
