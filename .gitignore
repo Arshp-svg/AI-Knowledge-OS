@@ -83,5 +83,6 @@ Thumbs.db
 
 backend/storage/
 
-# Local interview notes (do not commit)
+# Local notes & internal roadmap (do not commit)
 DAILY_INTERVIEW_SUMMARIES.md
+ROADMAP.md

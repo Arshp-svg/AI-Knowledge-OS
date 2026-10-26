@@ -13,11 +13,10 @@
 [![Answer Relevance](https://img.shields.io/badge/Answer%20Relevance-90.7%25-green?style=flat-square)](eval_results.md)
 [![Context Precision](https://img.shields.io/badge/Context%20Precision-88.0%25-green?style=flat-square)](eval_results.md)
 [![Mean Latency](https://img.shields.io/badge/Mean%20Latency-815ms-blue?style=flat-square)](eval_results.md)
-[![Roadmap](https://img.shields.io/badge/Production%20Roadmap-10%2F10%20Days%20Complete-success?style=flat-square)](ROADMAP.md)
 
 **A hardened, observable, containerized compound AI operating system engineered for enterprise document intelligence.**
 
-[Architecture](#-system-architecture) • [Key Differentiators](#-key-production-differentiators) • [Evaluation Benchmark](#-rag-triad-evaluation-scorecard) • [Quickstart](#-quickstart--docker-deployment) • [Cloud Deployment](#-cloud-deployment-blueprints) • [Roadmap](ROADMAP.md)
+[Architecture](#-system-architecture) • [Key Differentiators](#-key-production-differentiators) • [Evaluation Benchmark](#-rag-triad-evaluation-scorecard) • [Quickstart](#-quickstart--docker-deployment) • [Cloud Deployment](#-cloud-deployment-blueprints) • [Milestones](#-production-milestones--capabilities)
 
 </div>
 
@@ -201,7 +200,7 @@ To switch from embedded/local storage to enterprise managed Qdrant Cloud:
 
 ---
 
-## 📋 10-Day Production Roadmap Checklist
+## 📋 Production Milestones & Capabilities
 
 | Day | Milestone | Status | Key Deliverable |
 | :---: | :--- | :---: | :--- |
@@ -210,13 +209,11 @@ To switch from embedded/local storage to enterprise managed Qdrant Cloud:
 | **Day 3** | Hybrid Search (Dense + BM25) & Reranking | ✅ Completed | Reciprocal Rank Fusion + FlashRank Cross-Encoder |
 | **Day 4** | Streaming Responses (SSE) & Multi-Turn Chat | ✅ Completed | Server-Sent Events `/ask/stream` & anaphora rewriter |
 | **Day 5** | Defense-in-Depth Guardrails Layer | ✅ Completed | Prompt injection scanner, PII scrubber & score gating |
-| **Day 6** | Rate Limiting & Pro duction API Security | ✅ Completed | SlowAPI sliding window, magic bytes & security headers |
+| **Day 6** | Rate Limiting & Production API Security | ✅ Completed | SlowAPI sliding window, magic bytes & security headers |
 | **Day 7** | Automated RAG Triad Benchmarks (Ragas) | ✅ Completed | 15-question golden benchmark (100% Faithfulness) |
 | **Day 8** | Distributed Tracing & Observability | ✅ Completed | OpenTelemetry/Langfuse waterfall spans & cost tracking |
 | **Day 9** | Multi-Stage Docker & Compose Orchestration | ✅ Completed | Multi-stage Dockerfiles, pre-cached models & `/health` |
 | **Day 10**| Public Cloud Deployment & Portfolio Polish | ✅ Completed | Render blueprint, Railway config, Vercel & docs |
-
-*Review full technical milestones and deliverables in [**`ROADMAP.md`**](ROADMAP.md).*
 
 ---
 
