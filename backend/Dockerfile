@@ -47,6 +47,14 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME="/home/appuser/.cache/huggingface" \
     TRANSFORMERS_CACHE="/home/appuser/.cache/huggingface" \
+    FLASHRANK_CACHE_DIR="/home/appuser/.cache/flashrank" \
+    TOKENIZERS_PARALLELISM="false" \
+    OMP_NUM_THREADS="1" \
+    MKL_NUM_THREADS="1" \
+    OPENBLAS_NUM_THREADS="1" \
+    VECLIB_MAXIMUM_THREADS="1" \
+    NUMEXPR_NUM_THREADS="1" \
+    TORCH_NUM_THREADS="1" \
     PORT=8000
 
 # Pre-warm & cache neural models during build to prevent cold-start latency

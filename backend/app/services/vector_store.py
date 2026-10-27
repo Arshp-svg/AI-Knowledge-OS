@@ -76,10 +76,14 @@ class VectorStore:
                 )
             )
 
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points
-        )
+        # Batch points upsert in blocks of 32 to prevent memory bloat and network payload spikes
+        batch_size = 32
+        for idx in range(0, len(points), batch_size):
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=points[idx:idx + batch_size]
+            )
+        del points
 
     def search(self, query_embedding, top_k: int = 4):
         # Handle numpy arrays and nested lists safely

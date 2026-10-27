@@ -1,3 +1,4 @@
+import gc
 import uuid
 import logging
 from pathlib import Path
@@ -29,7 +30,7 @@ class DocumentStatusResponse(BaseModel):
 def process_document_background(doc_id: str, file_path: str, filename: str):
     """
     Background worker task: extracts text page-by-page, performs recursive chunking
-    with page numbers, computes embeddings, and indexes into Qdrant.
+    with page numbers, computes embeddings, and indexes into Qdrant with minimal RAM overhead.
     """
     try:
         pages = extract_pages_from_pdf(file_path)
@@ -38,8 +39,12 @@ def process_document_background(doc_id: str, file_path: str, filename: str):
             return
 
         chunks = chunk_document_pages(pages, chunk_size=500, overlap=50)
+        # Immediately release extracted pages from memory
+        del pages
+        gc.collect()
+
         chunk_texts = [c["text"] for c in chunks]
-        embeddings = embedding_service.embed_texts(chunk_texts)
+        embeddings = embedding_service.embed_texts(chunk_texts, batch_size=16)
         now_iso = datetime.utcnow().isoformat()
 
         metadatas = [
@@ -69,7 +74,12 @@ def process_document_background(doc_id: str, file_path: str, filename: str):
             chunks=len(chunks),
             text_length=total_length
         )
-        logger.info(f"Successfully processed document {doc_id} ({len(chunks)} chunks).")
+
+        # Release intermediate structures and trigger GC
+        del chunk_texts, embeddings, metadatas, chunks
+        gc.collect()
+
+        logger.info(f"Successfully processed document {doc_id}.")
     except Exception as e:
         logger.error(f"Error processing document {doc_id}: {e}", exc_info=True)
         document_store.update_status(doc_id=doc_id, status="FAILED", chunks=0, text_length=0)
@@ -117,6 +127,10 @@ async def upload_document(
 
     with open(safe_file_path, "wb") as f:
         f.write(file_bytes)
+
+    # Immediately release raw upload payload from memory
+    del file_bytes
+    gc.collect()
 
     # Create initial pending record
     doc_record = document_store.save_document(

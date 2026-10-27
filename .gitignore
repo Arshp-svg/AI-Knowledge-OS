@@ -81,6 +81,7 @@ Thumbs.db
 *.env
 
 
+storage/
 backend/storage/
 
 # Local notes & internal roadmap (do not commit)
