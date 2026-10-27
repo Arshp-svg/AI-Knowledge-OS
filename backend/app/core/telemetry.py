@@ -240,24 +240,67 @@ class TelemetryService:
         except Exception as exc:
             logger.error(f"Failed to persist telemetry trace: {exc}")
 
-        # Send to Langfuse Cloud if available
+        # Send to Langfuse Cloud if available (supports Langfuse SDK v5+ and legacy v2)
         if self.langfuse:
             try:
-                lf_trace = self.langfuse.trace(
-                    id=d["trace_id"],
-                    name=d["name"],
-                    input=d["input_query"],
-                    output=d["output_answer"],
-                    metadata=d["metadata"]
-                )
-                for s in d["spans"]:
-                    lf_trace.span(
-                        name=s["name"],
-                        metadata=s["attributes"],
-                        output=s["status"]
+                # OpenTelemetry / Langfuse v5 requires 32-character hex trace ID
+                try:
+                    hex_trace_id = uuid.UUID(str(d["trace_id"])).hex
+                except Exception:
+                    hex_trace_id = str(d["trace_id"]).replace("-", "").lower()[:32].ljust(32, "0")
+
+                if hasattr(self.langfuse, "start_observation"):
+                    # Langfuse v5 OpenTelemetry API
+                    root = self.langfuse.start_observation(
+                        name=d["name"],
+                        as_type="chain",
+                        trace_context={"trace_id": hex_trace_id},
+                        input=d["input_query"],
+                        output=d["output_answer"],
+                        metadata={**(d.get("metadata") or {}), "trace_id": d["trace_id"]}
                     )
+                    for s in d["spans"]:
+                        s_name = s["name"]
+                        as_type = "retriever" if "retriev" in s_name.lower() else "guardrail" if "guard" in s_name.lower() else "generation" if "llm" in s_name.lower() or "gen" in s_name.lower() else "span"
+                        span_kwargs = {
+                            "name": s_name,
+                            "as_type": as_type,
+                            "metadata": s.get("attributes", {}),
+                            "status_message": s.get("status")
+                        }
+                        if as_type == "generation" and d.get("total_tokens"):
+                            span_kwargs["usage_details"] = {
+                                "input": d.get("prompt_tokens", 0),
+                                "output": d.get("completion_tokens", 0),
+                                "total": d.get("total_tokens", 0)
+                            }
+                            if d.get("estimated_cost_usd"):
+                                span_kwargs["cost_details"] = {"total": d["estimated_cost_usd"]}
+                        child = root.start_observation(**span_kwargs)
+                        child.end()
+                    root.end()
+                    if hasattr(self.langfuse, "flush"):
+                        self.langfuse.flush()
+                elif hasattr(self.langfuse, "trace"):
+                    # Legacy Langfuse SDK v2 API
+                    lf_trace = self.langfuse.trace(
+                        id=d["trace_id"],
+                        name=d["name"],
+                        input=d["input_query"],
+                        output=d["output_answer"],
+                        metadata=d["metadata"]
+                    )
+                    for s in d["spans"]:
+                        lf_trace.span(
+                            name=s["name"],
+                            metadata=s["attributes"],
+                            output=s["status"]
+                        )
+                    if hasattr(self.langfuse, "flush"):
+                        self.langfuse.flush()
             except Exception as exc:
                 logger.warning(f"Error exporting trace to Langfuse: {exc}")
+
 
     def get_recent_traces(self, limit: int = 25) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
