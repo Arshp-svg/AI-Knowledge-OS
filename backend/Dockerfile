@@ -15,10 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Optimize PyTorch: install CPU-only wheels first to prevent downloading 3.5GB of CUDA packages on CPU instances
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining Python dependencies into virtual environment
+# Install Python dependencies into virtual environment
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -45,21 +42,13 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    HF_HOME="/home/appuser/.cache/huggingface" \
-    TRANSFORMERS_CACHE="/home/appuser/.cache/huggingface" \
+    FASTEMBED_CACHE_PATH="/home/appuser/.cache/fastembed" \
     FLASHRANK_CACHE_DIR="/home/appuser/.cache/flashrank" \
-    TOKENIZERS_PARALLELISM="false" \
-    OMP_NUM_THREADS="1" \
-    MKL_NUM_THREADS="1" \
-    OPENBLAS_NUM_THREADS="1" \
-    VECLIB_MAXIMUM_THREADS="1" \
-    NUMEXPR_NUM_THREADS="1" \
-    TORCH_NUM_THREADS="1" \
     PORT=8000
 
 # Pre-warm & cache neural models during build to prevent cold-start latency
-RUN mkdir -p /home/appuser/.cache/huggingface /home/appuser/.cache/flashrank && \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')" && \
+RUN mkdir -p /home/appuser/.cache/fastembed /home/appuser/.cache/flashrank && \
+    python -c "from fastembed import TextEmbedding; list(TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/home/appuser/.cache/fastembed').embed(['warmup']))" && \
     python -c "from flashrank import Ranker; Ranker(model_name='ms-marco-TinyBERT-L-2-v2', cache_dir='/home/appuser/.cache/flashrank')"
 
 # Copy application source code

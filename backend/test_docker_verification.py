@@ -44,7 +44,7 @@ def test_docker_and_orchestration():
     assert "FROM python:3.12-slim AS runner" in backend_content, "Missing runner stage in backend Dockerfile"
     assert "useradd" in backend_content and "appuser" in backend_content, "Missing unprivileged appuser in backend Dockerfile"
     assert "USER appuser" in backend_content, "Backend container does not run as non-root user"
-    assert "SentenceTransformer" in backend_content, "Missing pre-warmed embeddings model caching"
+    assert ("SentenceTransformer" in backend_content or "TextEmbedding" in backend_content), "Missing pre-warmed embeddings model caching"
     assert "flashrank" in backend_content, "Missing pre-warmed FlashRank model caching"
     assert "HEALTHCHECK" in backend_content, "Missing HEALTHCHECK instruction in backend Dockerfile"
     print("  [PASS] Backend Dockerfile enforces multi-stage caching, model pre-warming, and non-root security.")
