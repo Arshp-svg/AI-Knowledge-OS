@@ -16,7 +16,9 @@
 
 **A hardened, observable, containerized compound AI operating system engineered for enterprise document intelligence.**
 
-[Architecture](#-system-architecture) • [Key Differentiators](#-key-production-differentiators) • [Evaluation Benchmark](#-rag-triad-evaluation-scorecard) • [Quickstart](#-quickstart--docker-deployment) • [Cloud Deployment](#-cloud-deployment-blueprints) • [Milestones](#-production-milestones--capabilities)
+### 🌐 [Live Demo: ai-knowledge-os-kappa.vercel.app](https://ai-knowledge-os-kappa.vercel.app/)
+
+[Live Demo](https://ai-knowledge-os-kappa.vercel.app/) • [Architecture](#-system-architecture) • [Key Differentiators](#-key-production-differentiators) • [Evaluation Benchmark](#-rag-triad-evaluation-scorecard) • [API Reference](#%EF%B8%8F-api-reference) • [Quickstart](#-quickstart--docker-deployment)
 
 </div>
 
@@ -168,52 +170,6 @@ This single command spins up:
 - **Distributed Vector DB**: `http://localhost:6333` (Qdrant v1.16.1)
 - **FastAPI Inference Engine**: `http://localhost:8000` (Deep health check at `/health`)
 - **Next.js Streaming Frontend**: `http://localhost:3000`
-
----
-
-## ☁️ Cloud Deployment Blueprints
-
-### Blueprint A: Backend Deployment on Render (1-Click)
-This repository includes a native [`render.yaml`](render.yaml) Infrastructure-as-Code blueprint.
-1. Connect your GitHub repository to [Render](https://dashboard.render.com).
-2. Select **New** $\rightarrow$ **Blueprint** and point to this repository.
-3. Add your `GROQ_API_KEY` in the Render environment settings.
-4. Render automatically configures the Docker container, provisions a persistent storage disk, and attaches health check probes to `/health`.
-
-### Blueprint B: Managed Qdrant Cloud
-To switch from embedded/local storage to enterprise managed Qdrant Cloud:
-1. Create a free cluster at [Qdrant Cloud](https://cloud.qdrant.io).
-2. In your deployment environment variables, configure:
-   ```env
-   QDRANT_URL=https://<cluster-id>.us-east-1.gcp.cloud.qdrant.io:6333
-   QDRANT_API_KEY=<your-qdrant-api-key>
-   ```
-3. The backend automatically switches to remote HTTPS vector operations with zero code changes.
-
-### Blueprint C: Frontend Deployment on Vercel
-1. Import the `frontend/` folder into [Vercel](https://vercel.com).
-2. Set the Environment Variable:
-   ```env
-   NEXT_PUBLIC_API_URL=https://your-backend-service.onrender.com
-   ```
-3. Deploy! Vercel utilizes [`frontend/vercel.json`](frontend/vercel.json) to apply production security headers.
-
----
-
-## 📋 Production Milestones & Capabilities
-
-| Day | Milestone | Status | Key Deliverable |
-| :---: | :--- | :---: | :--- |
-| **Day 1** | Persistent Vector DB (Qdrant) | ✅ Completed | Embedded Qdrant storage & SQLite document registry |
-| **Day 2** | Async Ingestion & Page-Aware Chunking | ✅ Completed | BackgroundTasks ingestion & citation cards (`p. X`) |
-| **Day 3** | Hybrid Search (Dense + BM25) & Reranking | ✅ Completed | Reciprocal Rank Fusion + FlashRank Cross-Encoder |
-| **Day 4** | Streaming Responses (SSE) & Multi-Turn Chat | ✅ Completed | Server-Sent Events `/ask/stream` & anaphora rewriter |
-| **Day 5** | Defense-in-Depth Guardrails Layer | ✅ Completed | Prompt injection scanner, PII scrubber & score gating |
-| **Day 6** | Rate Limiting & Production API Security | ✅ Completed | SlowAPI sliding window, magic bytes & security headers |
-| **Day 7** | Automated RAG Triad Benchmarks (Ragas) | ✅ Completed | 15-question golden benchmark (100% Faithfulness) |
-| **Day 8** | Distributed Tracing & Observability | ✅ Completed | OpenTelemetry/Langfuse waterfall spans & cost tracking |
-| **Day 9** | Multi-Stage Docker & Compose Orchestration | ✅ Completed | Multi-stage Dockerfiles, pre-cached models & `/health` |
-| **Day 10**| Public Cloud Deployment & Portfolio Polish | ✅ Completed | Render blueprint, Railway config, Vercel & docs |
 
 ---
 
